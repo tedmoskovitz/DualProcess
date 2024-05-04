@@ -105,8 +105,7 @@ def eval_twostep(agent, env, config):
         results = {trial_type: [] for trial_type in trial_types}
 
         # get control policy success rate
-        for i in range(1, config['num_eval_eps']+1):
-            env.update(i)
+        for _ in range(1, config['num_eval_eps']+1):
             done = False
             obs = env.reset()
 

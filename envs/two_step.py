@@ -178,3 +178,26 @@ class TwoStepTask:
         done = True
 
     return self.get_obs(), reward * self._reward_scale, done, info
+
+
+
+
+if __name__ == "__main__":
+    env = TwoStepTask()
+    t = 0
+    obs = env.reset()
+    done = False
+    state2description = {0: "fixation", 1: "selection", 2: "stage 2: 2", 3: "stage 2: 3"}
+    print("state: ", state2description[env.obs_to_state(obs)])
+    action = int(input("Enter an action:"))
+    if action not in list(range(2)):
+        raise ValueError(f"Invalid action: {action} is not 0 or 1")
+
+    while not done:
+        obs, reward, done, info = env.step(action)
+        print(state2description[env.obs_to_state(obs)], reward, done)
+        if info:
+            print(info)
+        action = int(input("Enter an action:"))
+        t += 1
+
