@@ -13,8 +13,6 @@ from replay import TrajectoryReplay
 from utils import KL, AgentOutput
 torch.autograd.set_detect_anomaly(True)
 
-# SavedAction = namedtuple('SavedAction', ['log_prob', 'pi', 'value', 'pi0', 'a_vd_kl', 's_vd_kl'])
-# SavedAction.__new__.__defaults__ = (None,) * len(SavedAction._fields)
 device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
 class MDLCAgent(nn.Module):
@@ -76,18 +74,13 @@ class MDLCAgent(nn.Module):
         self._a_tm1 = torch.tensor([np.random.choice(num_actions)])
         self._value_loss_wt = value_loss_wt
 
-        # optimizers
-        # self.control_optimizer = torch.optim.Adam(self.control.parameters(), lr=lr)
-        # self.default_optimizer = torch.optim.Adam(self.default.parameters(), lr=lr)
         self.optimizer = torch.optim.Adam(self.parameters(), lr=lr)
 
         # action and reward buffers
-        # self.control_buffer, self.rewards = [], []
         self.gamma = gamma  # 1.0
         self.loss_hist, self.kl_hist, self.v_hist, self.w_hist = [], [], [], []
         if hasattr(self.default.asymmetry, "weights"):
             self.w_hist.append(copy.copy(self.default.asymmetry.weights.detach().numpy()))
-        # self.batch_size = 32
 
     def detach_state(self):
         # detach gradient flow
@@ -143,10 +136,7 @@ class MDLCAgent(nn.Module):
             # sample an action from behavioral distribution
             action = policy.sample() if not greedy else torch.argmax(pi)
 
-            # self.control_buffer.append(AgentOutput(policy.log_prob(action), pi, v, pi0))
-            # self.rewards.append(0.0)
             if policy.entropy() <= self.rt_threshold:
-                # self.rewards = self.rewards[:-1]
                 break
 
         if get_policies:
@@ -154,8 +144,7 @@ class MDLCAgent(nn.Module):
         
         return action.item()
 
-    # @profile
-    def update(self, update_default=True, beta=1.0, **kwargs):
+    def update(self, beta=1.0, **kwargs):
         """
         Update control and default policies 
         """
@@ -181,12 +170,8 @@ class MDLCAgent(nn.Module):
         default_vdo_kl = torch.tensor(0.0) if not self._vdo else self.default.vd_kl()
 
         # control update ===================================
-        # for p in self.default.parameters():
-        #     p.requires_grad = False
         self.optimizer.zero_grad()
 
-        # self.control_optimizer.zero_grad()
-        # self.default_optimizer.zero_grad
         # sum up all the values of policy_losses and value_losses
         policy_loss = policy_losses_BT.mean() #sum(dim=1).mean()
         value_loss = value_losses_BT.mean() #sum(dim=1).mean()
@@ -194,33 +179,8 @@ class MDLCAgent(nn.Module):
         default_loss = default_policy_kl + beta * default_vdo_kl
         loss = policy_loss + value_loss + default_loss
         # perform backprop
-        loss.backward() #retain_graph=True) # tensor(4.7290)
+        loss.backward()
         
-
-        # for p in self.default.parameters():
-        #     p.requires_grad = True
-
-        # # default update ===================================
-        # default_loss, policy_kl, vdo_kl = torch.tensor(0.0), torch.tensor(0.0), torch.tensor(0.0) 
-        # if update_default:
-        #     # policy_kl, vdo_kl = torch.stack(policy_kls).sum(), torch.stack(vdo_kls).mean()
-        #     default_policy_kl = default_policy_kl_BT.sum(dim=1).mean()
-        #     default_loss = default_policy_kl + beta * default_vdo_kl #+ beta * vdo_kl  
-
-        #     for p in self.control.parameters():
-        #         p.requires_grad = False
-        #     self.default_optimizer.zero_grad()
-            
-        #     default_loss.backward()
-        #     #for p in sel
-        #     try:
-        #         default_grad_norms = [p.grad.norm().item() for p in self.default.parameters()]
-        #         default_grad_norm = sum(default_grad_norms) / len(default_grad_norms)
-        #     except:
-        #         default_grad_norm = 0.0
-        #     self.default_optimizer.step()
-        #     for p in self.control.parameters():
-        #         p.requires_grad = True
 
         try:
             control_grad_norms = [p.grad.norm().item() for p in self.control.parameters()]
@@ -232,9 +192,7 @@ class MDLCAgent(nn.Module):
             default_grad_norm = sum(default_grad_norms) / len(default_grad_norms)
         except:
             default_grad_norm = 0.0
-        # self.control_optimizer.step()
-        # for p in self.default.parameters():
-        #     p.requires_grad = True
+
         self.optimizer.step()
 
         self.clear_buffers()
@@ -253,7 +211,5 @@ class MDLCAgent(nn.Module):
     
     def clear_buffers(self):
         self.detach_state()
-        # del self.rewards[:]
-        # del self.control_buffer[:]
         self.control_buffer.clear()
 

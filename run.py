@@ -2,7 +2,6 @@
 from configurator import envs
 from evals import eval_agent
 from mdlc import MDLCAgent
-import pdb
 import time
 from utils import (
     generate_beta_schedule,
@@ -10,22 +9,12 @@ from utils import (
     set_seed_everywhere,
     entropy)
 
-# experiment params
-# use_wandb = True
-# num_episodes = 30_000
-# display_eps = 50
-# eval_every = 500
-# num_eval_eps = 50
-# batch_size = 1
-# seed = 1
-# environment params
 env_name = 'TwoStep'
 
 # --------------------------------------------
 config_keys = [k for k, v in globals().items() if not k.startswith("__") and not callable(v) and isinstance(v, (int, float, bool, str))]
 config = {k: globals()[k] for k in config_keys}
 
-# @profile
 def run(config):
     env_class, env_kwargs, exp_kwargs, agent_kwargs = envs[config['env_name']]
     config.update(exp_kwargs)
